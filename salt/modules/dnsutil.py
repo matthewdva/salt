@@ -345,7 +345,7 @@ def SPF(domain, record="SPF", nameserver=None):
 
 def MX(domain, resolve=False, nameserver=None):
     """
-    Return a list of lists for the MX of ``domain``.
+    Return a list of lists, sorted by priority,  for the MX of ``domain``.
 
     If the 'resolve' argument is True, resolve IPs for the servers.
 
@@ -362,6 +362,29 @@ def MX(domain, resolve=False, nameserver=None):
     """
     if _has_dig():
         return __salt__["dig.MX"](domain, resolve, nameserver)
+
+    return "This function requires dig, which is not currently available"
+
+
+def SRV(domain, resolve=False, nameserver=None):
+    """
+    Return a list of lists, sorted by priority for the SRV  of ``domain``.
+
+    If the 'resolve' argument is True, resolve IPs for the servers.
+
+    It's limited to one IP, because although in practice it's very rarely a
+    round robin, it is an acceptable configuration and pulling just one IP lets
+    the data be similar to the non-resolved version. If you think an MX has
+    multiple IPs, don't use the resolver here, resolve them in a separate step.
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt ns1 dnsutil.SRV _ntp._udp.google.com
+    """
+    if _has_dig():
+        return __salt__["dig.SRV"](domain, resolve, nameserver)
 
     return "This function requires dig, which is not currently available"
 

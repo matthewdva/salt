@@ -282,7 +282,7 @@ def SPF(domain, record="SPF", nameserver=None):
 
 def MX(domain, resolve=False, nameserver=None):
     """
-    Return a list of lists for the MX of ``domain``.
+    Return a list of lists, sorted by priority,  for the MX of ``domain``.
 
     If the ``resolve`` argument is True, resolve IPs for the servers.
 
@@ -314,9 +314,50 @@ def MX(domain, resolve=False, nameserver=None):
     stdout = [x.split() for x in cmd["stdout"].split("\n")]
 
     if resolve:
-        return [(lambda x: [x[0], A(x[1], nameserver)[0]])(x) for x in stdout]
+        stdout = [(lambda x: [x[0], A(x[1], nameserver)[0]])(x) for x in stdout]
 
-    return stdout
+    return sorted(stdout, key=lambda x: x[0])
+
+
+def SRV(domain, resolve=False, nameserver=None):
+    """
+    Return a list of lists, sorted by priority,  for the SRV of ``domain``.
+
+    If the ``resolve`` argument is True, resolve IPs for the servers.
+
+    It's limited to one IP, because although in practice it's very rarely a
+    round robin, it is an acceptable configuration and pulling just one IP lets
+    the data be similar to the non-resolved version. If you think an MX has
+    multiple IPs, don't use the resolver here, resolve them in a separate step.
+
+    .. versionadded:: TBD
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt ns1 dig.SRV _sip._tls.microsoft.com
+    """
+    dig = ["dig", "+short", str(domain), "SRV"]
+
+    if nameserver is not None:
+        dig.append("@{}".format(nameserver))
+
+    cmd = __salt__["cmd.run_all"](dig, python_shell=False)
+    # In this case, 0 is not the same as False
+    if cmd["retcode"] != 0:
+        log.warning(
+            "dig returned exit code '%s'. Returning empty list as fallback.",
+            cmd["retcode"],
+        )
+        return []
+
+    stdout = [x.split() for x in cmd["stdout"].split("\n")]
+
+    if resolve:
+        stdout = [(lambda x: [x[0], x[1], x[2], A(x[3], nameserver)[0]])(x) for x in stdout]
+
+    return sorted(stdout, key=lambda x: (x[0], x[1]))
 
 
 def TXT(host, nameserver=None):
@@ -356,3 +397,4 @@ cname = CNAME
 ns = NS
 spf = SPF
 mx = MX
+srv = SRV
